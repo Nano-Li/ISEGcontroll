@@ -1,0 +1,40 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local Python environments
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Build and packaging output (keep PyInstaller .spec files)
+/build/
+/dist/
+*.egg-info/
+
+# Runtime logs and measurement output (data/ contains source code)
+/logs/
+/iseg_data_logs/
+*.log
+
+# Local IDE and operating-system files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Private publishing instructions; never commit this document
+/GitHub保存与上传指南.md
