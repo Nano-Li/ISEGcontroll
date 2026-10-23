@@ -21,6 +21,7 @@ class DeviceTreeWidget(QWidget):
 
     sig_channel_selected = pyqtSignal(int, str, float)  # channel_id, label, v_nominal
     sig_scan_ports = pyqtSignal()
+    sig_port_selected = pyqtSignal(str)  # 仅用户手动选择时记忆
     sig_connect = pyqtSignal(str)
     sig_disconnect = pyqtSignal(str)
     sig_group_channel = pyqtSignal(int, str)  # channel_id, group_name
@@ -42,6 +43,7 @@ class DeviceTreeWidget(QWidget):
         self._build_ui()
         # 端口选择变化时更新按钮状态
         self._combo_ports.currentTextChanged.connect(self._on_port_changed)
+        self._combo_ports.activated[str].connect(self.sig_port_selected.emit)
 
     def _build_ui(self) -> None:
         """构建 UI"""
@@ -134,13 +136,20 @@ class DeviceTreeWidget(QWidget):
 
     # ========== 公共方法 ==========
 
-    def set_ports(self, ports: list[str]) -> None:
+    def set_ports(self, ports: list[str], preferred_port: str = "") -> None:
         """刷新 COM 端口列表"""
         current = self._combo_ports.currentText()
-        self._combo_ports.clear()
-        self._combo_ports.addItems(ports)
-        if current in ports:
-            self._combo_ports.setCurrentText(current)
+        self._combo_ports.blockSignals(True)
+        try:
+            self._combo_ports.clear()
+            self._combo_ports.addItems(ports)
+            if preferred_port in ports:
+                self._combo_ports.setCurrentText(preferred_port)
+            elif current in ports:
+                self._combo_ports.setCurrentText(current)
+        finally:
+            self._combo_ports.blockSignals(False)
+        self._on_port_changed(self._combo_ports.currentText())
 
     def refresh_tree(self, devices: list["DeviceInfo"]) -> None:
         """

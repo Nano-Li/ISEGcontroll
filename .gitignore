@@ -38,3 +38,7 @@ Desktop.ini
 
 # Private publishing instructions; never commit this document
 /GitHub保存与上传指南.md
+
+# Local port/channel preferences and atomic-save temporary files
+/config.json
+/config.json.*.tmp

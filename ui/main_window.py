@@ -32,6 +32,7 @@ from serial_comm.port_manager import PortManager
 from serial_comm.async_worker import AsyncSerialManager, CommandPacket, CmdType
 from core.device_manager import DeviceManager
 from core.ramp_controller import RampController
+from core.settings import LocalSettings
 from data.data_buffer import DataBuffer
 from data.csv_exporter import CsvExporter
 from ui.device_tree import DeviceTreeWidget
@@ -56,6 +57,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("ISEG THQ 高压电源控制器 v2.0 (异步优化)")
         self.resize(1400, 900)
+        self.settings = LocalSettings()
 
         # ====== 核心模块 ======
         # 使用 AsyncSerialManager 替代 PortManager
@@ -118,6 +120,9 @@ class MainWindow(QMainWindow):
         self._setup_auto_log()
         self._scan_ports()
         self._update_status_bar()
+
+        if self.settings.last_error:
+            self.statusBar().showMessage(self.settings.last_error, 10000)
 
     # ========== UI 构建 ==========
 
@@ -184,6 +189,7 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self) -> None:
         self.device_tree.sig_scan_ports.connect(self._scan_ports)
+        self.device_tree.sig_port_selected.connect(self._remember_port)
         self.device_tree.sig_connect.connect(self._connect_device)
         self.device_tree.sig_disconnect.connect(self._disconnect_device)
         self.device_tree.sig_channel_selected.connect(self._on_channel_selected)
@@ -202,8 +208,20 @@ class MainWindow(QMainWindow):
 
     def _scan_ports(self) -> None:
         ports = self.async_serial.scan_ports()
-        self.device_tree.set_ports(ports)
+        self.device_tree.set_ports(ports, self.settings.preferred_port)
         self._status_label.setText(f"已扫描到 {len(ports)} 个COM端口")
+
+    def _remember_port(self, port: str) -> None:
+        if not self.settings.remember_port(port):
+            self.statusBar().showMessage(self.settings.last_error, 10000)
+
+    def _remember_channel_params(self, channel_id: int, target_v: float,
+                                 speed_vps: float) -> None:
+        ch = self.device_manager.get_channel(channel_id)
+        if ch and not self.settings.remember_channel(
+            ch.device_port, ch.channel_index, target_v, speed_vps
+        ):
+            self.statusBar().showMessage(self.settings.last_error, 10000)
 
     def _connect_device(self, port: str) -> None:
         """连接设备（同步 — 仅连接时执行一次）"""
@@ -276,6 +294,11 @@ class MainWindow(QMainWindow):
                 self._data_buffers[ch.channel_id] = buf
                 label = f"{device.name} CH{ch.channel_index}"
                 self.multi_panel.register_channel(ch.channel_id, label, ch.v_nominal)
+                card = self.multi_panel.get_card(ch.channel_id)
+                card.set_params(*self.settings.channel_params(
+                    port, ch.channel_index, ch.v_nominal))
+                # 恢复完成后再监听，避免初始化覆盖文件中的偏好。
+                card.sig_params_changed.connect(self._remember_channel_params)
 
                 # ⚠ 安全修复：重连后立即读取硬件真实电压/电流
                 v_resp = self.async_serial.send_sync(

@@ -32,6 +32,7 @@ class ChannelCard(QWidget):
     sig_start_ramp = pyqtSignal(int, float, float)   # channel_id, target_v, speed_vps
     sig_stop_ramp = pyqtSignal(int)                   # channel_id
     sig_start_ramp_down = pyqtSignal(int, float)      # channel_id, speed_vps
+    sig_params_changed = pyqtSignal(int, float, float)  # 仅保存界面偏好
 
     def __init__(self, channel_id: int, label: str, v_nominal: float, parent=None):
         super().__init__(parent)
@@ -304,6 +305,7 @@ class ChannelCard(QWidget):
                 self._label_est_time.setText(f"约 {est_sec:.0f}s")
         else:
             self._label_est_time.setText("约 -- s")
+        self.sig_params_changed.emit(self._channel_id, v, speed)
 
     def _on_start_ramp(self) -> None:
         target_v = self._spin_vset.value()
